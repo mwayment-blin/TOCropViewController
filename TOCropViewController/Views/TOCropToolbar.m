@@ -216,7 +216,9 @@
             [buttonsInOrderHorizontally addObject:self.rotateCounterclockwiseButton];
         }
         
-        [buttonsInOrderHorizontally addObject:self.resetButton];
+        if (!self.resetButtonHidden) {
+            [buttonsInOrderHorizontally addObject:self.resetButton];
+        }
         
         if (!self.clampButtonHidden) {
             [buttonsInOrderHorizontally addObject:self.clampButton];
@@ -254,7 +256,9 @@
             [buttonsInOrderVertically addObject:self.rotateCounterclockwiseButton];
         }
         
-        [buttonsInOrderVertically addObject:self.resetButton];
+        if (!self.resetButtonHidden) {
+            [buttonsInOrderVertically addObject:self.resetButton];
+        }
         
         if (!self.clampButtonHidden) {
             [buttonsInOrderVertically addObject:self.clampButton];
@@ -348,6 +352,14 @@
         return;
     
     _rotateCounterclockwiseButtonHidden = rotateButtonHidden;
+    [self setNeedsLayout];
+}
+
+- (void)setResetButtonHidden:(BOOL)resetButtonHidden {
+    if (_resetButtonHidden == resetButtonHidden)
+        return;
+    
+    _resetButtonHidden = resetButtonHidden;
     [self setNeedsLayout];
 }
 

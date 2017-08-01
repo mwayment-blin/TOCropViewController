@@ -122,6 +122,7 @@
     
     self.toolbar.clampButtonHidden = self.aspectRatioPickerButtonHidden || circularMode;
     self.toolbar.rotateClockwiseButtonHidden = self.rotateClockwiseButtonHidden && circularMode;
+    self.toolbar.resetButtonHidden = self.resetButtonHidden;
     
     self.transitioningDelegate = self;
     self.view.backgroundColor = self.cropView.backgroundColor;

@@ -62,6 +62,9 @@
 @property (nonatomic, assign) BOOL rotateCounterclockwiseButtonHidden;
 @property (nonatomic, assign) BOOL rotateClockwiseButtonHidden;
 
+/* Reset button visibility settings */
+@property (nonatomic, assign) BOOL resetButtonHidden;
+
 /* Enable the reset button */
 @property (nonatomic, assign) BOOL resetButtonEnabled;
 
