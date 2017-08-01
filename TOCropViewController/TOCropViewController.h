@@ -197,6 +197,13 @@ typedef NS_ENUM(NSInteger, TOCropViewControllerToolbarPosition) {
 @property (nonatomic, assign) BOOL rotateButtonsHidden;
 
 /**
+ When enabled, hides the reset button.
+ 
+ Default is NO.
+ */
+@property (nonatomic, assign) BOOL resetButtonHidden;
+
+/**
  When enabled, hides the 'Aspect Ratio Picker' button on the toolbar.
  
  Default is NO.

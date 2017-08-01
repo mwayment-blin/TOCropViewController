@@ -956,6 +956,14 @@
     return self.cropView.resetAspectRatioEnabled;
 }
 
+- (void)setResetButtonHidden:(BOOL)resetButtonHidden {
+    self.toolbar.resetButtonHidden = resetButtonHidden;
+}
+
+- (BOOL)resetButtonHidden {
+    return self.toolbar.resetButtonHidden;
+}
+
 - (void)setAngle:(NSInteger)angle
 {
     self.cropView.angle = angle;
