@@ -40,6 +40,8 @@
 {
     TOCropViewController *cropController = [[TOCropViewController alloc] initWithCroppingStyle:self.croppingStyle image:image];
     cropController.delegate = self;
+    cropController.aspectRatioPickerButtonHidden = YES;
+    cropController.rotateClockwiseButtonHidden = YES;
     
     // -- Uncomment these if you want to test out restoring to a previous crop setting --
     //cropController.angle = 90; // The initial angle in which the image will be rotated

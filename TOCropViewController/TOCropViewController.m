@@ -121,7 +121,7 @@
     self.toolbar.rotateClockwiseButtonTapped        = ^{ [weakSelf rotateCropViewClockwise]; };
     
     self.toolbar.clampButtonHidden = self.aspectRatioPickerButtonHidden || circularMode;
-    self.toolbar.rotateClockwiseButtonHidden = self.rotateClockwiseButtonHidden && circularMode;
+    self.toolbar.rotateClockwiseButtonHidden = self.rotateClockwiseButtonHidden;
     self.toolbar.resetButtonHidden = self.resetButtonHidden;
     
     self.transitioningDelegate = self;
