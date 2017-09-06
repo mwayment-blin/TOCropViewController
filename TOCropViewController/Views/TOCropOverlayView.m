@@ -58,7 +58,7 @@ static const CGFloat kTOCropOverLayerCornerWidth = 20.0f;
     UIView *(^newLineView)(void) = ^UIView *(void){
         return [self createNewLineView];
     };
-
+    
     _outerLineViews     = @[newLineView(), newLineView(), newLineView(), newLineView()];
     
     _topLeftLineViews   = @[newLineView(), newLineView()];
@@ -106,32 +106,34 @@ static const CGFloat kTOCropOverLayerCornerWidth = 20.0f;
     }
     
     //corner liness
-    NSArray *cornerLines = @[self.topLeftLineViews, self.topRightLineViews, self.bottomRightLineViews, self.bottomLeftLineViews];
-    for (NSInteger i = 0; i < 4; i++) {
-        NSArray *cornerLine = cornerLines[i];
-        
-        CGRect verticalFrame = CGRectZero, horizontalFrame = CGRectZero;
-        switch (i) {
-            case 0: //top left
-                verticalFrame = (CGRect){-3.0f,-3.0f,3.0f,kTOCropOverLayerCornerWidth+3.0f};
-                horizontalFrame = (CGRect){0,-3.0f,kTOCropOverLayerCornerWidth,3.0f};
-                break;
-            case 1: //top right
-                verticalFrame = (CGRect){boundsSize.width,-3.0f,3.0f,kTOCropOverLayerCornerWidth+3.0f};
-                horizontalFrame = (CGRect){boundsSize.width-kTOCropOverLayerCornerWidth,-3.0f,kTOCropOverLayerCornerWidth,3.0f};
-                break;
-            case 2: //bottom right
-                verticalFrame = (CGRect){boundsSize.width,boundsSize.height-kTOCropOverLayerCornerWidth,3.0f,kTOCropOverLayerCornerWidth+3.0f};
-                horizontalFrame = (CGRect){boundsSize.width-kTOCropOverLayerCornerWidth,boundsSize.height,kTOCropOverLayerCornerWidth,3.0f};
-                break;
-            case 3: //bottom left
-                verticalFrame = (CGRect){-3.0f,boundsSize.height-kTOCropOverLayerCornerWidth,3.0f,kTOCropOverLayerCornerWidth};
-                horizontalFrame = (CGRect){-3.0f,boundsSize.height,kTOCropOverLayerCornerWidth+3.0f,3.0f};
-                break;
+    if (!self.cropCornersHidden) {
+        NSArray *cornerLines = @[self.topLeftLineViews, self.topRightLineViews, self.bottomRightLineViews, self.bottomLeftLineViews];
+        for (NSInteger i = 0; i < 4; i++) {
+            NSArray *cornerLine = cornerLines[i];
+            
+            CGRect verticalFrame = CGRectZero, horizontalFrame = CGRectZero;
+            switch (i) {
+                case 0: //top left
+                    verticalFrame = (CGRect){-3.0f,-3.0f,3.0f,kTOCropOverLayerCornerWidth+3.0f};
+                    horizontalFrame = (CGRect){0,-3.0f,kTOCropOverLayerCornerWidth,3.0f};
+                    break;
+                case 1: //top right
+                    verticalFrame = (CGRect){boundsSize.width,-3.0f,3.0f,kTOCropOverLayerCornerWidth+3.0f};
+                    horizontalFrame = (CGRect){boundsSize.width-kTOCropOverLayerCornerWidth,-3.0f,kTOCropOverLayerCornerWidth,3.0f};
+                    break;
+                case 2: //bottom right
+                    verticalFrame = (CGRect){boundsSize.width,boundsSize.height-kTOCropOverLayerCornerWidth,3.0f,kTOCropOverLayerCornerWidth+3.0f};
+                    horizontalFrame = (CGRect){boundsSize.width-kTOCropOverLayerCornerWidth,boundsSize.height,kTOCropOverLayerCornerWidth,3.0f};
+                    break;
+                case 3: //bottom left
+                    verticalFrame = (CGRect){-3.0f,boundsSize.height-kTOCropOverLayerCornerWidth,3.0f,kTOCropOverLayerCornerWidth};
+                    horizontalFrame = (CGRect){-3.0f,boundsSize.height,kTOCropOverLayerCornerWidth+3.0f,3.0f};
+                    break;
+            }
+            
+            [cornerLine[0] setFrame:verticalFrame];
+            [cornerLine[1] setFrame:horizontalFrame];
         }
-        
-        [cornerLine[0] setFrame:verticalFrame];
-        [cornerLine[1] setFrame:horizontalFrame];
     }
     
     //grid lines - horizontal
@@ -172,7 +174,7 @@ static const CGFloat kTOCropOverLayerCornerWidth = 20.0f;
         for (UIView *lineView in self.verticalGridLines) {
             lineView.alpha = hidden ? 0.0f : 1.0f;
         }
-    
+        
         return;
     }
     

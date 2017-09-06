@@ -25,7 +25,8 @@
 
 typedef NS_ENUM(NSInteger, TOCropViewCroppingStyle) {
     TOCropViewCroppingStyleDefault,     // The regular, rectangular crop box
-    TOCropViewCroppingStyleCircular     // A fixed, circular crop box
+    TOCropViewCroppingStyleCircular,    // A fixed, circular crop box
+    TOCropViewCroppingStyleNone
 };
 
 @class TOCropView;
@@ -70,7 +71,7 @@ typedef NS_ENUM(NSInteger, TOCropViewCroppingStyle) {
  */
 @property (nonatomic, readonly) BOOL canBeReset;
 
-/** 
+/**
  The frame of the cropping box in the coordinate space of the crop view
  */
 @property (nonatomic, readonly) CGRect cropBoxFrame;
@@ -123,7 +124,7 @@ typedef NS_ENUM(NSInteger, TOCropViewCroppingStyle) {
 @property (nonatomic, assign) NSInteger angle;
 
 /**
- Hide all of the crop elements for transition animations 
+ Hide all of the crop elements for transition animations
  */
 @property (nonatomic, assign) BOOL croppingViewsHidden;
 
@@ -157,7 +158,7 @@ typedef NS_ENUM(NSInteger, TOCropViewCroppingStyle) {
 - (void)setSimpleRenderMode:(BOOL)simpleMode animated:(BOOL)animated;
 
 /**
- When performing a screen rotation that will change the size of the scroll view, this takes 
+ When performing a screen rotation that will change the size of the scroll view, this takes
  a snapshot of all of the scroll view data before it gets manipulated by iOS.
  Please call this in your view controller, before the rotation animation block is committed.
  */
