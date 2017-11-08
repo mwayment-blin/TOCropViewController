@@ -201,7 +201,14 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
         self.scrollView.touchesBegan = ^{ [weakSelf startEditing]; };
         self.scrollView.touchesEnded = ^{ [weakSelf startResetTimer]; };
     }
-    
+
+    // Disable smart inset behavior in iOS 11
+    #if defined(__IPHONE_11_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_11_0
+    if (@available(iOS 11.0, *)) {
+        self.scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    }
+    #endif
+
     //Background Image View
     self.backgroundImageView = [[UIImageView alloc] initWithImage:self.image];
     self.backgroundImageView.layer.minificationFilter = kCAFilterTrilinear;
@@ -273,15 +280,8 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
 }
 
 #pragma mark - View Layout -
-- (void)didMoveToSuperview
+- (void)performInitialSetup
 {
-    [super didMoveToSuperview];
-    
-    //Since this also gets called when getting removed from the superview
-    if (self.superview == nil) {
-        return;
-    }
-    
     //Perform the initial layout of the image
     [self layoutInitialImage];
     
@@ -446,14 +446,14 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
     CGRect frame = self.cropBoxFrame;
     CGRect originFrame = self.cropOriginFrame;
     CGRect contentFrame = self.contentBounds;
-    
-    point.x = MAX(contentFrame.origin.x, point.x);
-    point.y = MAX(contentFrame.origin.y, point.y);
+
+    point.x = MAX(contentFrame.origin.x - kTOCropViewPadding, point.x);
+    point.y = MAX(contentFrame.origin.y - kTOCropViewPadding, point.y);
     
     //The delta between where we first tapped, and where our finger is now
     CGFloat xDelta = ceilf(point.x - self.panOriginPoint.x);
     CGFloat yDelta = ceilf(point.y - self.panOriginPoint.y);
-    
+
     //Current aspect ratio of the crop box in case we need to clamp it
     CGFloat aspectRatio = (originFrame.size.width / originFrame.size.height);
     
@@ -464,7 +464,7 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
     //ensure we can properly clamp the XY value of the box if it overruns the minimum size
     //(Otherwise the image itself will slide with the drag gesture)
     BOOL clampMinFromTop = NO, clampMinFromLeft = NO;
-    
+
     switch (self.tappedEdge) {
         case TOCropViewOverlayEdgeLeft:
             if (self.aspectRatioLockEnabled) {
@@ -644,7 +644,18 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
         maxSize.width = contentFrame.size.height * aspectRatio;
         minSize.height = kTOCropViewMinimumBoxSize / aspectRatio;
     }
-    
+
+    // Clamp the width if it goes over
+    if (clampMinFromLeft) {
+        CGFloat maxWidth = CGRectGetMaxX(self.cropOriginFrame) - contentFrame.origin.x;
+        frame.size.width = MIN(frame.size.width, maxWidth);
+    }
+
+    if (clampMinFromTop) {
+        CGFloat maxHeight = CGRectGetMaxY(self.cropOriginFrame) - contentFrame.origin.y;
+        frame.size.height = MIN(frame.size.height, maxHeight);
+    }
+
     //Clamp the minimum size
     frame.size.width  = MAX(frame.size.width, minSize.width);
     frame.size.height = MAX(frame.size.height, minSize.height);
@@ -652,7 +663,7 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
     //Clamp the maximum size
     frame.size.width  = MIN(frame.size.width, maxSize.width);
     frame.size.height = MIN(frame.size.height, maxSize.height);
-    
+
     //Clamp the X position of the box to the interior of the cropping bounds
     frame.origin.x = MAX(frame.origin.x, CGRectGetMinX(contentFrame));
     frame.origin.x = MIN(frame.origin.x, CGRectGetMaxX(contentFrame) - minSize.width);
@@ -784,8 +795,9 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
         self.tappedEdge = [self cropEdgeForPoint:self.panOriginPoint];
     }
     
-    if (recognizer.state == UIGestureRecognizerStateEnded)
+    if (recognizer.state == UIGestureRecognizerStateEnded) {
         [self startResetTimer];
+    }
     
     [self updateCropBoxFrameWithGesturePoint:point];
 }
@@ -1044,10 +1056,10 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
     UIEdgeInsets edgeInsets = self.scrollView.contentInset;
     
     CGRect frame = CGRectZero;
-    frame.origin.x = floorf((contentOffset.x + edgeInsets.left) * (imageSize.width / contentSize.width));
+    frame.origin.x = floorf((floorf(contentOffset.x) + edgeInsets.left) * (imageSize.width / contentSize.width));
     frame.origin.x = MAX(0, frame.origin.x);
     
-    frame.origin.y = floorf((contentOffset.y + edgeInsets.top) * (imageSize.height / contentSize.height));
+    frame.origin.y = floorf((floorf(contentOffset.y) + edgeInsets.top) * (imageSize.height / contentSize.height));
     frame.origin.y = MAX(0, frame.origin.y);
     
     frame.size.width = ceilf(cropBoxFrame.size.width * (imageSize.width / contentSize.width));
@@ -1262,7 +1274,7 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
     offset.y = MAX(-cropFrame.origin.y, offset.y);
     
     __weak typeof(self) weakSelf = self;
-    void (^translateBlock)() = ^{
+    void (^translateBlock)(void) = ^{
         typeof(self) strongSelf = weakSelf;
         
         // Setting these scroll view properties will trigger
@@ -1404,7 +1416,7 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
     self.cropBoxLastEditedSize = cropBoxFrame.size;
     self.cropBoxLastEditedAngle = self.angle;
     
-    void (^translateBlock)() = ^{
+    void (^translateBlock)(void) = ^{
         self.scrollView.contentOffset = offset;
         self.cropBoxFrame = cropBoxFrame;
         
@@ -1554,6 +1566,8 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
     offset.y = floorf(-midPoint.y + cropTargetPoint.y);
     offset.x = MAX(-self.scrollView.contentInset.left, offset.x);
     offset.y = MAX(-self.scrollView.contentInset.top, offset.y);
+    offset.x = MIN(self.scrollView.contentSize.width - newCropFrame.size.width - self.scrollView.contentInset.right, offset.x);
+    offset.y = MIN(self.scrollView.contentSize.height - newCropFrame.size.height - self.scrollView.contentInset.bottom, offset.y);
     
     //if the scroll view's new scale is 1 and the new offset is equal to the old, will not trigger the delegate 'scrollViewDidScroll:'
     //so we should call the method manually to update the foregroundImageView's frame

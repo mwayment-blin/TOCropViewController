@@ -9,7 +9,7 @@
 #import "ViewController.h"
 #import "TOCropViewController.h"
 
-@interface ViewController () <UINavigationControllerDelegate,UIImagePickerControllerDelegate, TOCropViewControllerDelegate>
+@interface ViewController () <UINavigationControllerDelegate, UIImagePickerControllerDelegate, TOCropViewControllerDelegate>
 
 @property (nonatomic, strong) UIImage *image;           // The image we'll be cropping
 @property (nonatomic, strong) UIImageView *imageView;   // The image view to present the cropped image
@@ -43,17 +43,28 @@
     cropController.aspectRatioPickerButtonHidden = YES;
     cropController.rotateClockwiseButtonHidden = YES;
     
+
+    // Uncomment this if you wish to provide extra instructions via a title label
+    //cropController.title = @"Crop Image";
+
     // -- Uncomment these if you want to test out restoring to a previous crop setting --
     //cropController.angle = 90; // The initial angle in which the image will be rotated
-    //cropController.imageCropFrame = CGRectMake(0,0,2848,4288); //The
+    //cropController.imageCropFrame = CGRectMake(0,0,2848,4288); //The initial frame that the crop controller will have visible.
     
     // -- Uncomment the following lines of code to test out the aspect ratio features --
     //cropController.aspectRatioPreset = TOCropViewControllerAspectRatioPresetSquare; //Set the initial aspect ratio as a square
     //cropController.aspectRatioLockEnabled = YES; // The crop box is locked to the aspect ratio and can't be resized away from it
     //cropController.resetAspectRatioEnabled = NO; // When tapping 'reset', the aspect ratio will NOT be reset back to default
-    
+    //cropController.aspectRatioPickerButtonHidden = YES;
+
     // -- Uncomment this line of code to place the toolbar at the top of the view controller --
-    // cropController.toolbarPosition = TOCropViewControllerToolbarPositionTop;
+    //cropController.toolbarPosition = TOCropViewControllerToolbarPositionTop;
+    
+    //cropController.rotateButtonsHidden = YES;
+    //cropController.rotateClockwiseButtonHidden = YES;
+    
+    //cropController.doneButtonTitle = @"Title";
+    //cropController.cancelButtonTitle = @"Title";
     
     self.image = image;
     
@@ -70,14 +81,13 @@
 
 - (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker
 {
-    [self dismissViewControllerAnimated:YES completion:nil];
+    [picker dismissViewControllerAnimated:YES completion:nil];
 }
 
 #pragma mark - Gesture Recognizer -
 - (void)didTapImageView
 {
-    //When tapping the image view, restore the image to the previous cropping state
-    
+    // When tapping the image view, restore the image to the previous cropping state
     TOCropViewController *cropController = [[TOCropViewController alloc] initWithCroppingStyle:self.croppingStyle image:self.image];
     cropController.delegate = self;
     CGRect viewFrame = [self.view convertRect:self.imageView.frame toView:self.navigationController.view];
@@ -127,7 +137,7 @@
     }
     else {
         self.imageView.hidden = NO;
-        [cropViewController.presentingViewController dismissViewControllerAnimated:YES completion:nil];
+        [cropViewController dismissViewControllerAnimated:YES completion:nil];
     }
 }
 
@@ -166,7 +176,7 @@
 - (void)showCropViewController
 {
     UIAlertController *alertController = [UIAlertController alertControllerWithTitle:nil message:nil preferredStyle:UIAlertControllerStyleActionSheet];
-    UIAlertAction *defaultAction = [UIAlertAction actionWithTitle:@"Crop Image"
+    UIAlertAction *defaultAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"Crop Image", @"")
                                              style:UIAlertActionStyleDefault
                                            handler:^(UIAlertAction *action) {
                                                self.croppingStyle = TOCropViewCroppingStyleDefault;
@@ -178,7 +188,7 @@
                                                [self presentViewController:standardPicker animated:YES completion:nil];
                                            }];
     
-    UIAlertAction *profileAction = [UIAlertAction actionWithTitle:@"Make Profile Picture"
+    UIAlertAction *profileAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"Make Profile Picture", @"")
                                            style:UIAlertActionStyleDefault
                                          handler:^(UIAlertAction *action) {
                                              self.croppingStyle = TOCropViewCroppingStyleCircular;
@@ -221,17 +231,25 @@
     }
 }
 
+- (void)dismissViewController {
+    [self dismissViewControllerAnimated:YES completion:nil];
+}
+
 #pragma mark - View Creation/Lifecycle -
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = @"TOCropViewController";
+    self.title = NSLocalizedString(@"TOCropViewController", @"");
     
     self.navigationController.navigationBar.translucent = NO;
     
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(showCropViewController)];
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction target:self action:@selector(sharePhoto)];
     
+#if TARGET_APP_EXTENSION
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(dismissViewController)];
+#else
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction target:self action:@selector(sharePhoto)];
     self.navigationItem.rightBarButtonItem.enabled = NO;
+#endif
     
     self.imageView = [[UIImageView alloc] init];
     self.imageView.userInteractionEnabled = YES;
