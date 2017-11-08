@@ -1587,7 +1587,7 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
         self.translucencyView.hidden = YES;
         self.gridOverlayView.hidden = YES;
         
-        [UIView animateWithDuration:0.45f delay:0.0f usingSpringWithDamping:1.0f initialSpringVelocity:0.8f options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+        [UIView animateWithDuration:0.2f delay:0.0f usingSpringWithDamping:1.0f initialSpringVelocity:0.8f options:UIViewAnimationOptionBeginFromCurrentState animations:^{
             CGAffineTransform transform = CGAffineTransformRotate(CGAffineTransformIdentity, clockwise ? M_PI_2 : -M_PI_2);
             transform = CGAffineTransformScale(transform, scale, scale);
             snapshotView.transform = transform;
@@ -1602,7 +1602,7 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
             
             self.translucencyView.alpha = 1.0f;
             
-            [UIView animateWithDuration:0.45f animations:^{
+            [UIView animateWithDuration:0.1f animations:^{
                 snapshotView.alpha = 0.0f;
                 self.backgroundContainerView.alpha = 1.0f;
                 self.gridOverlayView.alpha = 1.0f;
