@@ -67,7 +67,7 @@
 
 - (void)setup {
     self.backgroundView = [[UIView alloc] initWithFrame:self.bounds];
-    self.backgroundView.backgroundColor = [UIColor colorWithWhite:0.12f alpha:1.0f];
+    self.backgroundView.backgroundColor = [UIColor clearColor];
     [self addSubview:self.backgroundView];
     
     _rotateClockwiseButtonHidden = YES;
