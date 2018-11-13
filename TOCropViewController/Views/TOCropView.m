@@ -26,7 +26,7 @@
 
 #define TOCROPVIEW_BACKGROUND_COLOR [UIColor colorWithWhite:0.12f alpha:1.0f]
 
-static const CGFloat kTOCropViewPadding = 14.0f;
+static const CGFloat kTOCropViewPadding = 20.0f;
 static const NSTimeInterval kTOCropTimerDuration = 0.8f;
 static const CGFloat kTOCropViewMinimumBoxSize = 42.0f;
 static const CGFloat kTOCropViewCircularPathRadius = 300.0f;
@@ -98,7 +98,6 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
 /* Reset state data */
 @property (nonatomic, assign) CGSize originalCropBoxSize; /* Save the original crop box size so we can tell when the content has been edited */
 @property (nonatomic, assign) CGPoint originalContentOffset; /* Save the original content offset so we can tell if it's been scrolled. */
-@property (nonatomic, assign, readwrite) BOOL canBeReset;
 
 /* In iOS 9, a new dynamic blur effect became available. */
 @property (nonatomic, assign) BOOL dynamicBlurEffect;
@@ -464,6 +463,8 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
     //ensure we can properly clamp the XY value of the box if it overruns the minimum size
     //(Otherwise the image itself will slide with the drag gesture)
     BOOL clampMinFromTop = NO, clampMinFromLeft = NO;
+    
+    BOOL forceAspectRatioLockOnEdges = YES;
 
     switch (self.tappedEdge) {
         case TOCropViewOverlayEdgeLeft:
@@ -527,7 +528,7 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
             
             break;
         case TOCropViewOverlayEdgeTopLeft:
-            if (self.aspectRatioLockEnabled) {
+            if (self.aspectRatioLockEnabled || forceAspectRatioLockOnEdges) {
                 xDelta = MAX(xDelta, 0);
                 yDelta = MAX(yDelta, 0);
                 
@@ -557,7 +558,7 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
             
             break;
         case TOCropViewOverlayEdgeTopRight:
-            if (self.aspectRatioLockEnabled) {
+            if (self.aspectRatioLockEnabled || forceAspectRatioLockOnEdges) {
                 xDelta = MIN(xDelta, 0);
                 yDelta = MAX(yDelta, 0);
                 
@@ -584,7 +585,7 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
             
             break;
         case TOCropViewOverlayEdgeBottomLeft:
-            if (self.aspectRatioLockEnabled) {
+            if (self.aspectRatioLockEnabled || forceAspectRatioLockOnEdges) {
                 CGPoint distance;
                 distance.x = 1.0f - (xDelta / CGRectGetWidth(originFrame));
                 distance.y = 1.0f - (-yDelta / CGRectGetHeight(originFrame));
@@ -608,7 +609,7 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
             
             break;
         case TOCropViewOverlayEdgeBottomRight:
-            if (self.aspectRatioLockEnabled) {
+            if (self.aspectRatioLockEnabled || forceAspectRatioLockOnEdges) {
                 
                 CGPoint distance;
                 distance.x = 1.0f - ((-1 * xDelta) / CGRectGetWidth(originFrame));
@@ -721,6 +722,8 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
         //Enable / Disable the reset button
         [self checkForCanReset];
         
+        [self moveCroppedContentToCenterAnimated:NO];
+        
         return;
     }
     
@@ -739,6 +742,7 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
             [self layoutInitialImage];
         } completion:^(BOOL complete) {
             [self setSimpleRenderMode:NO animated:YES];
+            [self moveCroppedContentToCenterAnimated:NO];
         }];
     });
 }
@@ -1402,7 +1406,7 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
         offset.y += (delta * 0.5f);
         
         if (delta < FLT_EPSILON)
-            cropBoxFrame.origin.x = self.contentBounds.origin.y;
+            cropBoxFrame.origin.x = self.contentBounds.origin.y - self.cropRegionInsets.top;
         
         CGFloat boundsHeight = CGRectGetHeight(boundsFrame);
         if (newHeight > boundsHeight) {
@@ -1502,6 +1506,8 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
         self.scrollView.zoomScale = self.cropBoxLastEditedZoomScale;
         if (self.croppingDisabled) {
             self.scrollView.maximumZoomScale = self.scrollView.minimumZoomScale;
+        } else {
+            self.scrollView.maximumZoomScale = self.scrollView.zoomScale;
         }
     }
     else {
@@ -1512,6 +1518,8 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
         self.scrollView.zoomScale *= scale;
         if (self.croppingDisabled) {
             self.scrollView.maximumZoomScale = self.scrollView.minimumZoomScale;
+        } else {
+            self.scrollView.maximumZoomScale = self.scrollView.zoomScale;
         }
     }
     
@@ -1579,7 +1587,7 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
     //If we're animated, play an animation of the snapshot view rotating,
     //then fade it out over the live content
     if (animated) {
-        snapshotView.center = self.scrollView.center;
+        snapshotView.center = CGPointMake(self.scrollView.center.x, self.scrollView.center.y + (self.cropRegionInsets.top / 2.0f) - kTOCropViewPadding - 5.0f);
         [self addSubview:snapshotView];
         
         self.backgroundContainerView.hidden = YES;
@@ -1609,8 +1617,13 @@ typedef NS_ENUM(NSInteger, TOCropViewOverlayEdge) {
             } completion:^(BOOL complete) {
                 self.rotateAnimationInProgress = NO;
                 [snapshotView removeFromSuperview];
+                
+                [self setAspectRatio:self.aspectRatio animated:NO];
+                self.scrollView.maximumZoomScale = self.croppingDisabled ? self.scrollView.minimumZoomScale : 15.0f;
             }];
         }];
+    } else {
+        self.scrollView.maximumZoomScale = self.croppingDisabled ? self.scrollView.minimumZoomScale : 15.0f;
     }
     
     [self checkForCanReset];

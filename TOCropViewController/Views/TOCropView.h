@@ -69,7 +69,7 @@ typedef NS_ENUM(NSInteger, TOCropViewCroppingStyle) {
 /**
  Whether the user has manipulated the crop view to the point where it can be reset
  */
-@property (nonatomic, readonly) BOOL canBeReset;
+@property (nonatomic, assign) BOOL canBeReset;
 
 /**
  The frame of the cropping box in the coordinate space of the crop view

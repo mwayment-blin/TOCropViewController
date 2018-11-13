@@ -27,10 +27,10 @@
 
 typedef NS_ENUM(NSInteger, TOCropViewControllerAspectRatioPreset) {
     TOCropViewControllerAspectRatioPresetOriginal,
+    TOCropViewControllerAspectRatioPreset4x3,
     TOCropViewControllerAspectRatioPresetSquare,
     TOCropViewControllerAspectRatioPreset3x2,
     TOCropViewControllerAspectRatioPreset5x3,
-    TOCropViewControllerAspectRatioPreset4x3,
     TOCropViewControllerAspectRatioPreset5x4,
     TOCropViewControllerAspectRatioPreset7x5,
     TOCropViewControllerAspectRatioPreset16x9,
@@ -91,6 +91,8 @@ typedef NS_ENUM(NSInteger, TOCropViewControllerToolbarPosition) {
  */
 - (void)cropViewController:(nonnull TOCropViewController *)cropViewController didFinishCancelled:(BOOL)cancelled NS_SWIFT_NAME(cropViewController(_:didFinishCancelled:));
 
+- (void)cropViewController:(nonnull TOCropViewController *)cropViewController deletePhotoAtIndex:(int)index NS_SWIFT_NAME(cropViewController(_:deletePhotoAtIndex:));
+
 @end
 
 @interface TOCropViewController : UIViewController
@@ -99,6 +101,8 @@ typedef NS_ENUM(NSInteger, TOCropViewControllerToolbarPosition) {
  The original, uncropped image that was passed to this controller.
  */
 @property (nonnull, nonatomic, readonly) UIImage *image;
+
+@property (nonatomic, assign) int photoIndex;
 
 /**
  The view controller's delegate that will return the resulting
@@ -136,6 +140,11 @@ typedef NS_ENUM(NSInteger, TOCropViewControllerToolbarPosition) {
 @property (nonatomic, assign) NSInteger angle;
 
 /**
+ The subtitle that appears below the title in crop area
+ */
+@property (nonatomic, strong) NSString *subtitle;
+
+/**
  The toolbar view managed by this view controller.
  */
 @property (nonnull, nonatomic, strong, readonly) TOCropToolbar *toolbar;
@@ -160,6 +169,16 @@ typedef NS_ENUM(NSInteger, TOCropViewControllerToolbarPosition) {
  Title label which can be used to show instruction on the top of the crop view controller
  */
 @property (nullable, nonatomic, readonly) UILabel *titleLabel;
+
+/**
+ Subtitle label which can be used to show instruction on the top of the crop view controller
+ */
+@property (nullable, nonatomic, readonly) UILabel *subtitleLabel;
+
+/**
+ Close this crop view controller
+ */
+@property (nullable, nonatomic, readonly) UIButton *closeButton;
 
 /**
  Title for the 'Done' button.

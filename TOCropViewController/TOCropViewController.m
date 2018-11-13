@@ -26,7 +26,7 @@
 #import "UIImage+CropRotate.h"
 #import "TOCroppedImageAttributes.h"
 
-static const CGFloat kTOCropViewControllerTitleTopPadding = 14.0f;
+static const CGFloat kTOCropViewControllerTitleTopPadding = 0.0f;
 
 @interface TOCropViewController () <UIActionSheetDelegate, UIViewControllerTransitioningDelegate, TOCropViewDelegate>
 
@@ -41,6 +41,10 @@ static const CGFloat kTOCropViewControllerTitleTopPadding = 14.0f;
 @property (nonatomic, strong, readwrite) TOCropView *cropView;
 @property (nonatomic, strong) UIView *toolbarSnapshotView;
 @property (nonatomic, strong, readwrite) UILabel *titleLabel;
+@property (nonatomic, strong, readwrite) UILabel *subtitleLabel;
+@property (nonatomic, strong, readwrite) UIButton *closeButton;
+@property (nonatomic, strong, readwrite) UIButton *aspectRatioButton;
+@property (nonatomic, strong, readwrite) UIButton *rotateButton;
 
 /* Transition animation controller */
 @property (nonatomic, copy) void (^prepareForTransitionHandler)(void);
@@ -54,6 +58,8 @@ static const CGFloat kTOCropViewControllerTitleTopPadding = 14.0f;
 /* Convenience method for checking vertical state */
 @property (nonatomic, readonly) BOOL verticalLayout;
 
+@property (nonatomic, assign) BOOL savingAndClosing;
+
 /* On iOS 7, the popover view controller that appears when tapping 'Done' */
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -65,6 +71,11 @@ static const CGFloat kTOCropViewControllerTitleTopPadding = 14.0f;
 @implementation TOCropViewController
 
 CGFloat titleLabelHeight;
+CGFloat subtitleLabelHeight;
+CGFloat subtitleTopMargin;
+CGFloat closeButtonWidth;
+CGFloat actionButtonWidth;
+CGFloat actionButtonsBottomMargin;
 
 - (instancetype)initWithCroppingStyle:(TOCropViewCroppingStyle)style image:(UIImage *)image
 {
@@ -83,8 +94,14 @@ CGFloat titleLabelHeight;
         _aspectRatioPreset = TOCropViewControllerAspectRatioPresetOriginal;
         _toolbarPosition = TOCropViewControllerToolbarPositionBottom;
         _rotateClockwiseButtonHidden = YES;
+        _savingAndClosing = NO;
 		
 		titleLabelHeight = 0.0f;
+        subtitleLabelHeight = 0.0f;
+        closeButtonWidth = 60.0f;
+        subtitleTopMargin = 20.0f;
+        actionButtonWidth = 35.0f;
+        actionButtonsBottomMargin = 20.0f;
     }
 	
     return self;
@@ -109,6 +126,7 @@ CGFloat titleLabelHeight;
     __weak typeof(self) weakSelf = self;
     self.toolbar.doneButtonTapped   = ^{ [weakSelf doneButtonTapped]; };
     self.toolbar.cancelButtonTapped = ^{ [weakSelf cancelButtonTapped]; };
+    self.toolbar.deleteButtonTapped = ^{ [weakSelf deleteButtonTapped]; };
     
     self.toolbar.resetButtonTapped = ^{ [weakSelf resetCropViewLayout]; };
     self.toolbar.clampButtonTapped = ^{ [weakSelf showAspectRatioDialog]; };
@@ -119,6 +137,10 @@ CGFloat titleLabelHeight;
     self.toolbar.clampButtonHidden = self.aspectRatioPickerButtonHidden || circularMode;
     self.toolbar.rotateClockwiseButtonHidden = self.rotateClockwiseButtonHidden;
     self.toolbar.resetButtonHidden = self.resetButtonHidden;
+    
+    if (self.aspectRatioPickerButtonHidden) {
+        self.aspectRatioButton.enabled = NO;
+    }
     
     self.transitioningDelegate = self;
     self.view.backgroundColor = self.cropView.backgroundColor;
@@ -144,12 +166,18 @@ CGFloat titleLabelHeight;
     }
     else {
         [self.cropView setBackgroundImageViewHidden:YES animated:NO];
-        self.titleLabel.alpha = 0.0f;
+        /*self.titleLabel.alpha = 0.0f;
+        self.subtitleLabel.alpha = 0.0f;
+        self.closeButton.alpha = 0.0f;
+        self.aspectRatioButton.alpha = 0.0f;
+        self.rotateButton.alpha = 0.0f;*/
     }
 
     if (self.aspectRatioPreset != TOCropViewControllerAspectRatioPresetOriginal) {
         [self setAspectRatioPreset:self.aspectRatioPreset animated:NO];
     }
+    
+    self.toolbar.resetButtonEnabled = NO;
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -160,7 +188,11 @@ CGFloat titleLabelHeight;
 
     void (^updateContentBlock)(void) = ^{
         [self setNeedsStatusBarAppearanceUpdate];
-        self.titleLabel.alpha = 1.0f;
+        /*self.titleLabel.alpha = 1.0f;
+        self.subtitleLabel.alpha = 1.0f;
+        self.closeButton.alpha = 1.0f;
+        self.aspectRatioButton.alpha = 1.0f;
+        self.rotateButton.alpha = 1.0f;*/
     };
 
     if (animated) {
@@ -177,6 +209,9 @@ CGFloat titleLabelHeight;
     if (self.navigationController == nil) {
         [self.cropView setBackgroundImageViewHidden:NO animated:animated];
     }
+    
+    self.toolbar.resetButtonEnabled = NO;
+    self.cropView.canBeReset = NO;
 }
 
 - (void)viewWillDisappear:(BOOL)animated
@@ -326,8 +361,25 @@ CGFloat titleLabelHeight;
     frame.origin.x = ceilf((width - frame.size.width) * 0.5f);
     if (!verticalLayout) { frame.origin.x += 44.0f; }
 
-    frame.origin.y = self.topLayoutGuide.length + kTOCropViewControllerTitleTopPadding;
+    frame.origin.y = closeButtonWidth + kTOCropViewControllerTitleTopPadding;
 
+    return frame;
+}
+
+- (CGRect)frameForSubtitleLabelWithSize:(CGSize)size verticalLayout:(BOOL)verticalLayout
+{
+    if (size.width > (self.view.bounds.size.width - 40.0f)) {
+        size.width = self.view.bounds.size.width - 40.0f;
+    }
+    CGRect frame = (CGRect){CGPointZero, size};
+    CGFloat width = self.view.bounds.size.width;
+    
+    frame.origin.x = ceilf((width - frame.size.width) * 0.5f);
+    //if (!verticalLayout) { frame.origin.x += 64.0f; }
+    
+    CGRect titleFrame = [self frameForTitleLabelWithSize:self.titleLabel.frame.size verticalLayout:verticalLayout];
+    frame.origin.y = titleFrame.origin.y + titleFrame.size.height + subtitleTopMargin;
+    
     return frame;
 }
 
@@ -350,12 +402,19 @@ CGFloat titleLabelHeight;
     }
 
     [self.titleLabel sizeToFit];
+    [self.subtitleLabel sizeToFit];
 
-    CGFloat verticalInset = 0.0f; // self.topLayoutGuide.length; // status bar //FIXME: Is this ever needed?
+    CGFloat verticalInset = self.closeButton.frame.size.height; // self.topLayoutGuide.length; // status bar //FIXME: Is this ever needed?
     verticalInset += kTOCropViewControllerTitleTopPadding;
     verticalInset += self.titleLabel.frame.size.height;
+    if (self.subtitleLabel.text.length) {
+        verticalInset += subtitleTopMargin + self.subtitleLabel.frame.size.height;
+    }
+    self.cropView.cropRegionInsets = UIEdgeInsetsMake(verticalInset + 20.0f, 0, insets.bottom + actionButtonWidth + 20.0f, 0);
 
-    self.cropView.cropRegionInsets = UIEdgeInsetsMake(verticalInset, 0, insets.bottom, 0);
+    if (!self.savingAndClosing && (!self.aspectRatioLockEnabled || self.resetAspectRatioEnabled)) {
+        [self resetCropViewLayout];
+    }
 }
 
 - (void)viewSafeAreaInsetsDidChange
@@ -389,9 +448,18 @@ CGFloat titleLabelHeight;
     self.cropView.frame = [self frameForCropViewWithVerticalLayout:self.verticalLayout];
     [self adjustCropViewInsets];
     [self.cropView moveCroppedContentToCenterAnimated:NO];
+    
+    self.closeButton.frame = CGRectMake(self.view.bounds.size.width - closeButtonWidth, 0, closeButtonWidth, closeButtonWidth);
+    self.aspectRatioButton.frame = CGRectMake(60.0f, self.toolbar.frame.origin.y - actionButtonsBottomMargin - actionButtonWidth, actionButtonWidth, actionButtonWidth);
+    self.rotateButton.frame = CGRectMake(self.view.bounds.size.width - 60.0f - actionButtonWidth, self.toolbar.frame.origin.y - actionButtonsBottomMargin - actionButtonWidth, actionButtonWidth, actionButtonWidth);
 
     if (self.title.length) {
         self.titleLabel.frame = [self frameForTitleLabelWithSize:self.titleLabel.frame.size verticalLayout:self.verticalLayout];
+        
+        if (self.subtitle.length) {
+            self.subtitleLabel.frame = [self frameForSubtitleLabelWithSize:self.subtitleLabel.frame.size verticalLayout:self.verticalLayout];
+        }
+        
         [self.cropView moveCroppedContentToCenterAnimated:NO];
     }
 
@@ -458,7 +526,9 @@ CGFloat titleLabelHeight;
     [self.cropView setSimpleRenderMode:NO animated:YES];
     self.cropView.internalLayoutDisabled = NO;
 	
+    self.closeButton.frame = CGRectMake(self.view.bounds.size.width - closeButtonWidth, 0, closeButtonWidth, closeButtonWidth);
 	self.titleLabel.frame = CGRectMake(0, 0, self.view.frame.size.width, titleLabelHeight);
+    self.subtitleLabel.frame = CGRectMake(0, self.titleLabel.frame.origin.y + self.titleLabel.frame.size.height, self.view.frame.size.width, subtitleLabelHeight);
 }
 
 - (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
@@ -494,14 +564,14 @@ CGFloat titleLabelHeight;
 #pragma mark - Aspect Ratio Handling -
 - (void)showAspectRatioDialog
 {
-    if (self.cropView.aspectRatioLockEnabled) {
+    /*if (self.cropView.aspectRatioLockEnabled) {
         self.cropView.aspectRatioLockEnabled = NO;
         self.toolbar.clampButtonGlowing = NO;
         return;
-    }
+    }*/
     
     //Depending on the shape of the image, work out if horizontal, or vertical options are required
-    BOOL verticalCropBox = self.cropView.cropBoxAspectRatioIsPortrait;
+    //BOOL verticalCropBox = self.cropView.cropBoxAspectRatioIsPortrait;
     
     // In CocoaPods, strings are stored in a separate bundle from the main one
     NSBundle *resourceBundle = nil;
@@ -518,17 +588,19 @@ CGFloat titleLabelHeight;
     NSString *cancelButtonTitle = NSLocalizedStringFromTableInBundle(@"Cancel", @"TOCropViewControllerLocalizable", resourceBundle, nil);
     NSString *originalButtonTitle = NSLocalizedStringFromTableInBundle(@"Original", @"TOCropViewControllerLocalizable", resourceBundle, nil);
     NSString *squareButtonTitle = NSLocalizedStringFromTableInBundle(@"Square", @"TOCropViewControllerLocalizable", resourceBundle, nil);
+    NSString *fourByThreeTitle = @"Landscape";
     
     //Prepare the list that will be fed to the alert view/controller
     NSMutableArray *items = [NSMutableArray array];
     [items addObject:originalButtonTitle];
+    [items addObject:fourByThreeTitle];
     [items addObject:squareButtonTitle];
-    if (verticalCropBox) {
+    /*if (verticalCropBox) {
         [items addObjectsFromArray:@[@"2:3", @"3:5", @"3:4", @"4:5", @"5:7", @"9:16"]];
     }
     else {
         [items addObjectsFromArray:@[@"3:2", @"5:3", @"4:3", @"5:4", @"7:5", @"16:9"]];
-    }
+    }*/
     
     //Present via a UIAlertController if >= iOS 8
     if (NSClassFromString(@"UIAlertController")) {
@@ -540,7 +612,7 @@ CGFloat titleLabelHeight;
         for (NSString *item in items) {
             UIAlertAction *action = [UIAlertAction actionWithTitle:item style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
                 [self setAspectRatioPreset:(TOCropViewControllerAspectRatioPreset)i animated:YES];
-                self.aspectRatioLockEnabled = YES;
+                self.aspectRatioLockEnabled = (i != TOCropViewControllerAspectRatioPresetOriginal);
             }];
             [alertController addAction:action];
             
@@ -624,14 +696,14 @@ CGFloat titleLabelHeight;
     }
     
     //If the image is a portrait shape, flip the aspect ratio to match
-    if (aspectRatioPreset != TOCropViewControllerAspectRatioPresetCustom &&
+    /*if (aspectRatioPreset != TOCropViewControllerAspectRatioPresetCustom &&
         self.cropView.cropBoxAspectRatioIsPortrait &&
         !self.aspectRatioLockEnabled)
     {
         CGFloat width = aspectRatio.width;
         aspectRatio.width = aspectRatio.height;
         aspectRatio.height = width;
-    }
+    }*/
     
     [self.cropView setAspectRatio:aspectRatio animated:animated];
 }
@@ -819,6 +891,24 @@ CGFloat titleLabelHeight;
     }
 }
 
+- (void)deleteButtonTapped
+{
+    __weak typeof(self) weakSelf = self;
+    UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Are you sure you want to delete this photo?" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    [alertController addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [alertController addAction:[UIAlertAction actionWithTitle:@"Yes, Delete" style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
+        if ([weakSelf.delegate respondsToSelector:@selector(cropViewController:deletePhotoAtIndex:)]) {
+            [weakSelf.delegate cropViewController:weakSelf deletePhotoAtIndex:weakSelf.photoIndex];
+        }
+    }]];
+
+    alertController.modalPresentationStyle = UIModalPresentationPopover;
+    UIPopoverPresentationController *presentationController = [alertController popoverPresentationController];
+    presentationController.sourceView = self.toolbar;
+    presentationController.sourceRect = self.toolbar.deleteButtonFrame;
+    [self presentViewController:alertController animated:YES completion:nil];
+}
+
 - (void)doneButtonTapped
 {
     CGRect cropFrame = self.cropView.imageCropFrame;
@@ -964,6 +1054,8 @@ CGFloat titleLabelHeight;
         isCallbackOrDelegateHandled = YES;
     }
     
+    self.savingAndClosing = YES;
+    
     if (!isCallbackOrDelegateHandled) {
         [self.presentingViewController dismissViewControllerAnimated:YES completion:nil];
     }
@@ -985,6 +1077,20 @@ CGFloat titleLabelHeight;
     self.titleLabel.text = self.title;
     [self.titleLabel sizeToFit];
     self.titleLabel.frame = [self frameForTitleLabelWithSize:self.titleLabel.frame.size verticalLayout:self.verticalLayout];
+}
+
+- (void)setSubtitle:(NSString *)subtitle {
+    _subtitle = subtitle;
+    
+    if (_subtitle.length == 0) {
+        [_subtitleLabel removeFromSuperview];
+        _subtitleLabel = nil;
+        return;
+    }
+    
+    self.subtitleLabel.text = self.subtitle;
+    [self.subtitleLabel sizeToFit];
+    self.subtitleLabel.frame = [self frameForSubtitleLabelWithSize:self.subtitleLabel.frame.size verticalLayout:self.verticalLayout];
 }
 
 - (void)setDoneButtonTitle:(NSString *)title {
@@ -1021,7 +1127,7 @@ CGFloat titleLabelHeight;
     if (_titleLabel) { return _titleLabel; }
 
     _titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    _titleLabel.font = [UIFont boldSystemFontOfSize:15.0f];
+    _titleLabel.font = [UIFont boldSystemFontOfSize:19.0f];
     _titleLabel.backgroundColor = [UIColor clearColor];
     _titleLabel.textColor = [UIColor whiteColor];
     _titleLabel.numberOfLines = 1;
@@ -1033,6 +1139,69 @@ CGFloat titleLabelHeight;
     [self.view insertSubview:self.titleLabel aboveSubview:self.cropView];
 
     return _titleLabel;
+}
+
+- (UILabel *)subtitleLabel
+{
+    if (!self.subtitle.length) { return nil; }
+    if (_subtitleLabel) { return _subtitleLabel; }
+    
+    _subtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    _subtitleLabel.font = [UIFont boldSystemFontOfSize:16.0f];
+    _subtitleLabel.backgroundColor = [UIColor clearColor];
+    _subtitleLabel.textColor = [UIColor whiteColor];
+    _subtitleLabel.numberOfLines = 0;
+    _subtitleLabel.baselineAdjustment = UIBaselineAdjustmentAlignBaselines;
+    _subtitleLabel.clipsToBounds = YES;
+    _subtitleLabel.textAlignment = NSTextAlignmentCenter;
+    _subtitleLabel.text = self.subtitle;
+    
+    [self.view insertSubview:self.subtitleLabel aboveSubview:self.cropView];
+    
+    return _subtitleLabel;
+}
+
+- (UIButton *)closeButton {
+    if (_closeButton) { return _closeButton; }
+    
+    _closeButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [_closeButton setImage:[UIImage imageNamed:@"crop_close"] forState:UIControlStateNormal];
+    _closeButton.imageView.contentMode = UIViewContentModeCenter;
+    _closeButton.frame = CGRectZero;
+    [_closeButton addTarget:self action:@selector(cancelButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+    
+    [self.view insertSubview:self.closeButton aboveSubview:self.cropView];
+    
+    return _closeButton;
+}
+
+- (UIButton *)aspectRatioButton {
+    if (_aspectRatioButton) { return _aspectRatioButton; }
+    
+    _aspectRatioButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [_aspectRatioButton setImage:[UIImage imageNamed:@"crop_scale"] forState:UIControlStateNormal];
+    [_aspectRatioButton setImage:[UIImage imageNamed:@"crop_scale_disabled"] forState:UIControlStateDisabled];
+    _aspectRatioButton.imageView.contentMode = UIViewContentModeCenter;
+    _aspectRatioButton.frame = CGRectZero;
+    [_aspectRatioButton addTarget:self action:@selector(showAspectRatioDialog) forControlEvents:UIControlEventTouchUpInside];
+    
+    [self.view insertSubview:self.aspectRatioButton aboveSubview:self.cropView];
+    
+    return _aspectRatioButton;
+}
+
+- (UIButton *)rotateButton {
+    if (_rotateButton) { return _rotateButton; }
+    
+    _rotateButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [_rotateButton setImage:[UIImage imageNamed:@"crop_rotate"] forState:UIControlStateNormal];
+    _rotateButton.imageView.contentMode = UIViewContentModeCenter;
+    _rotateButton.frame = CGRectZero;
+    [_rotateButton addTarget:self action:@selector(rotateCropViewCounterclockwise) forControlEvents:UIControlEventTouchUpInside];
+    
+    [self.view insertSubview:self.rotateButton aboveSubview:self.cropView];
+    
+    return _rotateButton;
 }
 
 - (void)setAspectRatioLockEnabled:(BOOL)aspectRatioLockEnabled
@@ -1083,6 +1252,7 @@ CGFloat titleLabelHeight;
 - (void)setAspectRatioPickerButtonHidden:(BOOL)aspectRatioPickerButtonHidden
 {
     self.toolbar.clampButtonHidden = aspectRatioPickerButtonHidden;
+    self.aspectRatioButton.enabled = !aspectRatioPickerButtonHidden;
 }
 
 - (BOOL)aspectRatioPickerButtonHidden

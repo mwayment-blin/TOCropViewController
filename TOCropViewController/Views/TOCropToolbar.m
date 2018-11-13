@@ -36,6 +36,7 @@
 
 @property (nonatomic, strong) UIButton *resetButton;
 @property (nonatomic, strong) UIButton *resetTextButton;
+@property (nonatomic, strong) UIButton *deleteButton;
 @property (nonatomic, strong) UIButton *clampButton;
 
 @property (nonatomic, strong) UIButton *rotateButton; // defaults to counterclockwise button for legacy compatibility
@@ -100,6 +101,13 @@
                      forState:UIControlStateNormal];
     [_doneTextButton setTitleColor:[UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:1.0f] forState:UIControlStateNormal];
     [_doneTextButton.titleLabel setFont:[UIFont systemFontOfSize:17.0f]];
+    if (@available(iOS 9.0, *)) {
+        [_doneTextButton setImage:[UIImage imageNamed:@"icon_arrow_white"] forState:UIControlStateNormal];
+        _doneTextButton.tintColor = [UIColor whiteColor];
+        _doneTextButton.semanticContentAttribute = [UIApplication sharedApplication].userInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft ? UISemanticContentAttributeForceLeftToRight : UISemanticContentAttributeForceRightToLeft;
+        _doneTextButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentRight;
+        _doneTextButton.titleEdgeInsets = UIEdgeInsetsMake(0, 0, 0, 4);
+    }
     [_doneTextButton addTarget:self action:@selector(buttonTapped:) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:_doneTextButton];
     
@@ -159,6 +167,14 @@
     [_resetTextButton.titleLabel setFont:[UIFont systemFontOfSize:17.0f]];
     [_resetTextButton addTarget:self action:@selector(buttonTapped:) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:_resetTextButton];
+    
+    _deleteButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [_deleteButton setTitle:@"Delete" forState:UIControlStateNormal];
+    [_deleteButton setTitleColor:[UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:1.0f] forState:UIControlStateNormal];
+    [_deleteButton setTitleColor:[UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.4f] forState:UIControlStateDisabled];
+    [_deleteButton.titleLabel setFont:[UIFont systemFontOfSize:17.0f]];
+    [_deleteButton addTarget:self action:@selector(buttonTapped:) forControlEvents:UIControlEventTouchUpInside];
+    [self addSubview:_deleteButton];
 }
 
 - (void)layoutSubviews
@@ -168,12 +184,13 @@
     BOOL verticalLayout = (CGRectGetWidth(self.bounds) < CGRectGetHeight(self.bounds));
     CGSize boundsSize = self.bounds.size;
     
-    self.cancelIconButton.hidden = NO;
+    self.deleteButton.hidden = NO;
+    self.doneTextButton.hidden = NO;
+    self.resetTextButton.hidden = NO;
+    self.cancelIconButton.hidden = YES;
     self.cancelTextButton.hidden = YES;
-    self.doneIconButton.hidden   = (!verticalLayout);
-    self.doneTextButton.hidden   = (verticalLayout);
-    self.resetButton.hidden = (!verticalLayout);
-    self.resetTextButton.hidden = (verticalLayout);
+    self.doneIconButton.hidden   = YES;
+    self.resetButton.hidden = YES;
 
     CGRect frame = self.bounds;
     frame.origin.x -= self.backgroundViewOutsets.left;
@@ -197,7 +214,7 @@
     if (verticalLayout == NO) {
         CGFloat insetPadding = 10.0f;
         
-        // Work out the cancel button frame
+        // Work out the delete button frame
         CGRect frame = CGRectZero;
         if (@available(iOS 11.0, *)) {
             frame.origin.y = 0.0f;
@@ -206,9 +223,8 @@
         }
         frame.size.height = 44.0f;
 
-        CGFloat cancelButtonWidth = [self.cancelTextButtonTitle ?
-                                     self.cancelTextButtonTitle : self.cancelTextButton.titleLabel.text  sizeWithAttributes:@{NSFontAttributeName:self.cancelTextButton.titleLabel.font}].width + 10;
-        frame.size.width = MIN(self.frame.size.width / 3.0, cancelButtonWidth);
+        CGFloat deleteButtonWidth = [self.deleteButton.titleLabel.text  sizeWithAttributes:@{NSFontAttributeName:self.deleteButton.titleLabel.font}].width + 10;
+        frame.size.width = MIN(self.frame.size.width / 3.0, deleteButtonWidth);
 
         //If normal layout, place on the left side, else place on the right
         if (self.reverseContentLayout == NO) {
@@ -217,14 +233,10 @@
         else {
             frame.origin.x = boundsSize.width - (frame.size.width + insetPadding);
         }
-        self.cancelIconButton.frame = frame;
-        
-        
-        
+        self.deleteButton.frame = frame;
         
         // Work out the Done button frame
-        CGFloat doneButtonWidth = [self.cancelTextButtonTitle ?
-                                   self.cancelTextButtonTitle : self.doneTextButton.titleLabel.text sizeWithAttributes:@{NSFontAttributeName:self.doneTextButton.titleLabel.font}].width + 10;
+        CGFloat doneButtonWidth = [self.doneTextButton.titleLabel.text sizeWithAttributes:@{NSFontAttributeName:self.doneTextButton.titleLabel.font}].width + 30;
         frame.size.width = MIN(self.frame.size.width / 3.0, doneButtonWidth);
         
         if (self.reverseContentLayout == NO) {
@@ -235,19 +247,27 @@
         }
         self.doneTextButton.frame = frame;
         
+        // Reset button frame
         CGRect resetFrame = CGRectZero;
-        resetFrame.origin.x = frame.origin.x - 64.0f - 4.0f;
-        resetFrame.origin.y = frame.origin.y;
         resetFrame.size.height = 44.0f;
         resetFrame.size.width = 64.0f;
+        resetFrame.origin.x = (self.frame.size.width - resetFrame.size.width) / 2.0f;
+        resetFrame.origin.y = frame.origin.y;
         self.resetTextButton.frame = resetFrame;
         
-        CGRect rotateFrame = CGRectZero;
+        /*CGRect rotateFrame = CGRectZero;
         rotateFrame.origin.x = resetFrame.origin.x - 44.0f;
         rotateFrame.origin.y = frame.origin.y;
         rotateFrame.size.height = 44.0f;
         rotateFrame.size.width = 44.0f;
         self.rotateCounterclockwiseButton.frame = rotateFrame;
+        
+        CGRect clampFrame = CGRectZero;
+        clampFrame.origin.x = rotateFrame.origin.x - 44.0f;
+        clampFrame.origin.y = frame.origin.y;
+        clampFrame.size.height = 44.0f;
+        clampFrame.size.width = 44.0f;
+        self.clampButton.frame = clampFrame;*/
         
         /*
         // Work out the frame between the two buttons where we can layout our action buttons
@@ -318,9 +338,9 @@
             [buttonsInOrderVertically addObject:self.resetButton];
         }
         
-        /*if (!self.clampButtonHidden) {
+        if (!self.clampButtonHidden) {
             [buttonsInOrderVertically addObject:self.clampButton];
-        }*/
+        }
         
         if (!self.rotateClockwiseButtonHidden) {
             [buttonsInOrderVertically addObject:self.rotateClockwiseButton];
@@ -370,6 +390,10 @@
     else if ((button == self.resetButton || button == self.resetTextButton) && self.resetButtonTapped) {
         self.resetButtonTapped();
     }
+    else if (button == self.deleteButton) {
+        if (self.deleteButtonTapped)
+            self.deleteButtonTapped();
+    }
     else if (button == self.rotateCounterclockwiseButton && self.rotateCounterclockwiseButtonTapped) {
         self.rotateCounterclockwiseButtonTapped();
     }
@@ -380,6 +404,11 @@
         self.clampButtonTapped();
         return;
     }
+}
+
+- (CGRect)deleteButtonFrame
+{
+    return self.deleteButton.frame;
 }
 
 - (CGRect)clampButtonFrame

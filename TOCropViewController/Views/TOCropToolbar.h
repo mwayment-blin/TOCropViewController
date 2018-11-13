@@ -58,10 +58,14 @@
 @property (nullable, nonatomic, copy) void (^rotateClockwiseButtonTapped)(void);
 @property (nullable, nonatomic, copy) void (^clampButtonTapped)(void);
 @property (nullable, nonatomic, copy) void (^resetButtonTapped)(void);
+@property (nullable, nonatomic, copy) void (^deleteButtonTapped)(void);
 
 /* State management for the 'clamp' button */
 @property (nonatomic, assign) BOOL clampButtonGlowing;
 @property (nonatomic, readonly) CGRect clampButtonFrame;
+
+/* State management for the 'delete' button */
+@property (nonatomic, readonly) CGRect deleteButtonFrame;
 
 /* Aspect ratio button visibility settings */
 @property (nonatomic, assign) BOOL clampButtonHidden;
